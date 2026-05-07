@@ -82,6 +82,10 @@ class StammClient:
         txid = self.algod.send_transactions(signed)
         return transaction.wait_for_confirmation(self.algod, txid, wait_rounds)
 
+    def _sync_opup(self, pool_state: PoolState) -> int:
+        """Return the extra opup count needed if the pool requires a sync."""
+        return 2 if self.pool_reader.needs_sync(pool_state) else 0
+
     def _ensure_opted_in(self, asset_id: int, wait_rounds: int) -> None:
         """Send and confirm an opt-in transaction if the sender isn't opted in."""
         if asset_id <= 0 or self._is_opted_in(asset_id):
@@ -127,10 +131,17 @@ class StammClient:
         if min_output <= 0:
             raise SlippageError(f"min_output is 0 at {slippage_pct}% slippage")
 
+        extra_opup = self._sync_opup(pool)
         if tier is not None:
-            txns = self.builder.build_swap(pool, asset_in, amount, tier, min_output, self.sender)
+            txns = self.builder.build_swap(
+                pool, asset_in, amount, tier, min_output, self.sender,
+                extra_opup=extra_opup,
+            )
         else:
-            txns = self.builder.build_swap_smart(pool, asset_in, amount, min_output, self.sender)
+            txns = self.builder.build_swap_smart(
+                pool, asset_in, amount, min_output, self.sender,
+                extra_opup=extra_opup,
+            )
 
         return self._submit(txns, wait_rounds)
 
@@ -162,6 +173,7 @@ class StammClient:
 
         txns = self.builder.build_swap_limit(
             pool, asset_in, amount, tier, min_output, limit_num, limit_den, self.sender,
+            extra_opup=self._sync_opup(pool),
         )
         return self._submit(txns, wait_rounds)
 
@@ -205,6 +217,7 @@ class StammClient:
         txns = self.builder.build_swap_routed(
             pool, asset_in, amount, tiers, amounts,
             min_output, self.sender, price_num, price_den,
+            extra_opup=self._sync_opup(pool),
         )
         return self._submit(txns, wait_rounds)
 
@@ -265,7 +278,10 @@ class StammClient:
             raise InsufficientLiquidityError("Zero LP output")
 
         min_lp = int(quote.expected_lp * (1 - slippage_pct / 100))
-        txns = self.builder.build_mint(pool, amount_a, amount_b, tier, min_lp, self.sender)
+        txns = self.builder.build_mint(
+            pool, amount_a, amount_b, tier, min_lp, self.sender,
+            extra_opup=self._sync_opup(pool),
+        )
         return self._submit(txns, wait_rounds)
 
     def burn(
@@ -288,7 +304,10 @@ class StammClient:
         min_a = int(quote.expected_a * (1 - slippage_pct / 100))
         min_b = int(quote.expected_b * (1 - slippage_pct / 100))
 
-        txns = self.builder.build_burn(pool, lp_amount, tier, min_a, min_b, output_asset, self.sender)
+        txns = self.builder.build_burn(
+            pool, lp_amount, tier, min_a, min_b, output_asset, self.sender,
+            extra_opup=self._sync_opup(pool),
+        )
         return self._submit(txns, wait_rounds)
 
     def seed_tier(
@@ -297,7 +316,10 @@ class StammClient:
     ) -> dict:
         """Seed an unseeded tier (1 micro of each asset)."""
         pool = self.pool_reader.get_state(pool_id)
-        txns = self.builder.build_seed_tier(pool, tier, self.sender)
+        txns = self.builder.build_seed_tier(
+            pool, tier, self.sender,
+            extra_opup=self._sync_opup(pool),
+        )
         return self._submit(txns, wait_rounds)
 
     def seed_and_mint(
@@ -318,7 +340,10 @@ class StammClient:
 
         self._ensure_opted_in(ts.lp_asset_id, wait_rounds)
 
-        txns = self.builder.build_seed_and_mint(pool, deposit_a, deposit_b, tier, 0, self.sender)
+        txns = self.builder.build_seed_and_mint(
+            pool, deposit_a, deposit_b, tier, 0, self.sender,
+            extra_opup=self._sync_opup(pool),
+        )
         return self._submit(txns, wait_rounds)
 
     # ── Read ─────────────────────────────────────────────

@@ -105,6 +105,27 @@ class PoolReader:
         """Read RT box — returns [(score_a2b, score_b2a)] per tier."""
         return self._read_rt_box(pool_id)
 
+    def needs_sync(self, pool_state: PoolState) -> bool:
+        """Return True if the pool's tracked reserves differ from on-chain balances.
+
+        When True, the next write call (swap/mint/burn/seed) will execute the
+        contract's rescale loop and consume extra opcodes. The high-level
+        `StammClient` provisions the additional opup automatically; callers
+        using `TransactionBuilder` directly should pass `extra_opup=2` if this
+        returns True.
+
+        Drift is detected against the sum of treasury + per-tier reserves.
+        The cached aggregate fields (`aggregate_a`/`aggregate_b`) are not
+        included in the comparison — they mirror the per-tier sum and would
+        double-count.
+        """
+        tracked_a = pool_state.treasury_a + sum(t.reserve_a for t in pool_state.tiers)
+        tracked_b = pool_state.treasury_b + sum(t.reserve_b for t in pool_state.tiers)
+        actual_a, actual_b = self.get_balances(
+            pool_state.app_id, pool_state.asset_a, pool_state.asset_b,
+        )
+        return actual_a != tracked_a or actual_b != tracked_b
+
     def get_balances(self, pool_id: int, asset_a: int = None, asset_b: int = None) -> tuple[int, int]:
         """Get actual on-chain asset balances of the pool.
         For ALGO pools (asset_a == 0), subtracts min_balance from ALGO balance.

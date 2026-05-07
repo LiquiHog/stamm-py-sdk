@@ -87,15 +87,19 @@ class TransactionBuilder:
         self, pool_state: PoolState,
         asset_in: int, amount_in: int, tier: int,
         min_output: int, sender: str,
+        extra_opup: int = 0,
     ) -> list:
         """Build swap transaction group.
         Group: [budget_call, deposit, app_call]
+
+        extra_opup: extra opup calls beyond the standard count. Pass 2 if the
+        pool needs a sync (use `PoolReader.needs_sync` to detect).
         """
         sp_zero = _suggested_params(self.algod, fee=0)
         pool_addr = pool_state.address
         pool_id = pool_state.app_id
         hub_apps, hub_fee = _hub_extras(pool_state)
-        opup_count = OPUP_COUNTS["swap"]
+        opup_count = OPUP_COUNTS["swap"] + extra_opup
 
         budget_txn = _build_budget_call(sender, sp_zero, opup_count)
         deposit_txn = _build_deposit(sender, pool_addr, asset_in, amount_in, sp_zero)
@@ -124,15 +128,19 @@ class TransactionBuilder:
         self, pool_state: PoolState,
         asset_in: int, amount_in: int,
         min_output: int, sender: str,
+        extra_opup: int = 0,
     ) -> list:
         """Build swap_smart transaction group.
         Group: [budget_call, deposit, app_call]
+
+        extra_opup: extra opup calls beyond the standard count. Pass 2 if the
+        pool needs a sync (use `PoolReader.needs_sync` to detect).
         """
         sp_zero = _suggested_params(self.algod, fee=0)
         pool_addr = pool_state.address
         pool_id = pool_state.app_id
         hub_apps, hub_fee = _hub_extras(pool_state)
-        opup_count = OPUP_COUNTS["swap_smart"]
+        opup_count = OPUP_COUNTS["swap_smart"] + extra_opup
 
         budget_txn = _build_budget_call(sender, sp_zero, opup_count)
         deposit_txn = _build_deposit(sender, pool_addr, asset_in, amount_in, sp_zero)
@@ -161,9 +169,13 @@ class TransactionBuilder:
         tiers: list, amounts: list,
         min_output: int, sender: str,
         price_num: int = 0, price_den: int = 0,
+        extra_opup: int = 0,
     ) -> list:
         """Build swap_routed transaction group.
         Validates no duplicate tiers. Packs legs into byte[] ABI arg.
+
+        extra_opup: extra opup calls beyond the standard count. Pass 2 if the
+        pool needs a sync (use `PoolReader.needs_sync` to detect).
         """
         seen = set()
         for t in tiers:
@@ -180,7 +192,7 @@ class TransactionBuilder:
         pool_addr = pool_state.address
         pool_id = pool_state.app_id
         hub_apps, hub_fee = _hub_extras(pool_state)
-        opup_count = OPUP_COUNTS["swap_routed"]
+        opup_count = OPUP_COUNTS["swap_routed"] + extra_opup
 
         budget_txn = _build_budget_call(sender, sp_zero, opup_count)
         deposit_txn = _build_deposit(sender, pool_addr, asset_in, amount_in, sp_zero)
@@ -211,13 +223,18 @@ class TransactionBuilder:
         asset_in: int, amount_in: int, tier: int,
         min_output: int, limit_num: int, limit_den: int,
         sender: str,
+        extra_opup: int = 0,
     ) -> list:
-        """Build swap_limit transaction group."""
+        """Build swap_limit transaction group.
+
+        extra_opup: extra opup calls beyond the standard count. Pass 2 if the
+        pool needs a sync (use `PoolReader.needs_sync` to detect).
+        """
         sp_zero = _suggested_params(self.algod, fee=0)
         pool_addr = pool_state.address
         pool_id = pool_state.app_id
         hub_apps, hub_fee = _hub_extras(pool_state)
-        opup_count = OPUP_COUNTS["swap_limit"]
+        opup_count = OPUP_COUNTS["swap_limit"] + extra_opup
 
         budget_txn = _build_budget_call(sender, sp_zero, opup_count)
         deposit_txn = _build_deposit(sender, pool_addr, asset_in, amount_in, sp_zero)
@@ -247,16 +264,20 @@ class TransactionBuilder:
         self, pool_state: PoolState,
         deposit_a: int, deposit_b: int, tier: int,
         min_lp_out: int, sender: str,
+        extra_opup: int = 0,
     ) -> list:
         """Build mint transaction group.
         Group: [budget_call, a_transfer, b_transfer, app_call]
+
+        extra_opup: extra opup calls beyond the standard count. Pass 2 if the
+        pool needs a sync (use `PoolReader.needs_sync` to detect).
         """
         sp_zero = _suggested_params(self.algod, fee=0)
         pool_addr = pool_state.address
         pool_id = pool_state.app_id
         lp_asset = pool_state.tiers[tier].lp_asset_id
         hub_apps, hub_fee = _hub_extras(pool_state)
-        opup_count = OPUP_COUNTS["mint"]
+        opup_count = OPUP_COUNTS["mint"] + extra_opup
 
         budget_txn = _build_budget_call(sender, sp_zero, opup_count)
         a_txn = _build_deposit(sender, pool_addr, pool_state.asset_a, deposit_a, sp_zero)
@@ -289,17 +310,21 @@ class TransactionBuilder:
         min_a_out: int, min_b_out: int,
         output_asset: int,
         sender: str,
+        extra_opup: int = 0,
     ) -> list:
         """Build burn transaction group.
         output_asset: lp_asset_id for proportional, asset_a or asset_b for single-sided.
         Group: [budget_call, lp_transfer, app_call]
+
+        extra_opup: extra opup calls beyond the standard count. Pass 2 if the
+        pool needs a sync (use `PoolReader.needs_sync` to detect).
         """
         sp_zero = _suggested_params(self.algod, fee=0)
         pool_addr = pool_state.address
         pool_id = pool_state.app_id
         lp_asset = pool_state.tiers[tier].lp_asset_id
         hub_apps, hub_fee = _hub_extras(pool_state)
-        opup_count = OPUP_COUNTS["burn"]
+        opup_count = OPUP_COUNTS["burn"] + extra_opup
 
         budget_txn = _build_budget_call(sender, sp_zero, opup_count)
         lp_txn = transaction.AssetTransferTxn(
@@ -333,14 +358,18 @@ class TransactionBuilder:
     def build_seed_tier(
         self, pool_state: PoolState,
         tier: int, sender: str,
+        extra_opup: int = 0,
     ) -> list:
         """Build seed_tier transaction group (1 micro of each asset).
         Group: [budget_call, a_transfer, b_transfer, app_call]
+
+        extra_opup: extra opup calls beyond the standard count. Pass 2 if the
+        pool needs a sync (use `PoolReader.needs_sync` to detect).
         """
         sp_zero = _suggested_params(self.algod, fee=0)
         pool_addr = pool_state.address
         pool_id = pool_state.app_id
-        opup_count = OPUP_COUNTS["seed_tier"]
+        opup_count = OPUP_COUNTS["seed_tier"] + extra_opup
 
         budget_txn = _build_budget_call(sender, sp_zero, opup_count)
         a_txn = _build_deposit(sender, pool_addr, pool_state.asset_a, 1, sp_zero)
@@ -366,16 +395,20 @@ class TransactionBuilder:
         self, pool_state: PoolState,
         deposit_a: int, deposit_b: int, tier: int,
         min_lp_out: int, sender: str,
+        extra_opup: int = 0,
     ) -> list:
         """Build seed_and_mint transaction group (first liquidity provision).
         Deposits must include 4 extra micros each for seeding default tiers.
         Group: [budget_call, a_transfer, b_transfer, app_call]
+
+        extra_opup: extra opup calls beyond the standard count. Pass 2 if the
+        pool needs a sync (use `PoolReader.needs_sync` to detect).
         """
         sp_zero = _suggested_params(self.algod, fee=0)
         pool_addr = pool_state.address
         pool_id = pool_state.app_id
         lp_asset = pool_state.tiers[tier].lp_asset_id
-        opup_count = OPUP_COUNTS["seed_and_mint"]
+        opup_count = OPUP_COUNTS["seed_and_mint"] + extra_opup
 
         total_a = deposit_a + 4
         total_b = deposit_b + 4

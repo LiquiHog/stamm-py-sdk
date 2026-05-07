@@ -13,4 +13,8 @@ Initial public release of the STAMM Python SDK.
 - `StammClient.from_mnemonic(...)` convenience constructor.
 - Configurable `wait_rounds` per call.
 - Optional indexer client for fast pool-id enumeration via `list_pool_ids()`.
+- Automatic pool-sync detection: `StammClient` provisions extra opup when a
+  pool's tracked reserves drift from its on-chain balances, so writes don't
+  fail mid-rescale. Low-level callers can use `PoolReader.needs_sync()` and
+  pass `extra_opup=2` to any builder method.
 - Typed throughout, ships `py.typed`.

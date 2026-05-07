@@ -119,6 +119,27 @@ ids = stamm.list_pool_ids()  # fast indexer path
 For a single pair lookup use `get_pool(asset_a, asset_b)` — that reads exactly
 one box and is the right call when you already know the pair.
 
+## Pool sync detection
+
+If a pool's tracked reserves drift from its actual on-chain balances (for
+example, after a direct asset transfer to the pool address), the contract
+runs an internal rescale on the next write call. That rescale costs extra
+opcodes, and a swap that doesn't budget for them will fail.
+
+`StammClient` handles this transparently: before each write, it compares the
+pool's tracked reserves to its on-chain balances and provisions the additional
+opup automatically. Once a write executes successfully, the sync resolves and
+later calls revert to the standard budget.
+
+If you're using `TransactionBuilder` directly, check it yourself:
+
+```python
+if pool_reader.needs_sync(pool_state):
+    txns = builder.build_swap(..., extra_opup=2)
+else:
+    txns = builder.build_swap(...)
+```
+
 ## Auto opt-in behavior
 
 `mint()` and `seed_and_mint()` automatically opt the sender into the tier's

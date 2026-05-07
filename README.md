@@ -140,4 +140,8 @@ environment — never paste a mnemonic into source.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+The Python SDK in this repository is MIT-licensed — see [LICENSE](LICENSE).
+
+The STAMM smart contracts and their source code are **not** covered by this
+license. They are not distributed in this repository and remain under
+separate terms.
